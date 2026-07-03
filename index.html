@@ -669,6 +669,34 @@
     }
 
     // ==================== 趋势图（ECharts） ====================
+    function compactTrendStats(hourlyStats, maxPoints = 72) {
+      if (!Array.isArray(hourlyStats) || hourlyStats.length <= maxPoints) return hourlyStats || [];
+
+      const bucketSize = Math.ceil(hourlyStats.length / maxPoints);
+      const compacted = [];
+
+      for (let start = 0; start < hourlyStats.length; start += bucketSize) {
+        const bucket = hourlyStats.slice(start, start + bucketSize);
+        const total = bucket.reduce((sum, item) => sum + Number(item.total || 0), 0);
+        const success = bucket.reduce((sum, item) => sum + Number(item.success || 0), 0);
+        const failed = bucket.reduce((sum, item) => sum + Number(item.failed || 0), 0);
+        const totalQuota = bucket.reduce((sum, item) => sum + Number(item.totalQuota || 0), 0);
+        const weightedTime = bucket.reduce((sum, item) => sum + Number(item.avgTime || 0) * Math.max(1, Number(item.total || 0)), 0);
+        const weight = bucket.reduce((sum, item) => sum + Math.max(1, Number(item.total || 0)), 0);
+
+        compacted.push({
+          hour: bucket[0].hour,
+          total,
+          success,
+          failed,
+          totalQuota,
+          avgTime: weight ? Number((weightedTime / weight).toFixed(2)) : 0,
+        });
+      }
+
+      return compacted;
+    }
+
     function renderTrend(hourlyStats, context = null) {
       if (!hourlyStats.length) {
         if (trendChartInstance) trendChartInstance.clear();
@@ -696,8 +724,10 @@
       }
 
       const isDark = document.documentElement.classList.contains('dark');
-      const isMinuteLevel = detectMinuteLevel(hourlyStats);
-      const labels = hourlyStats.map(item => formatTimeLabel(item.hour, isMinuteLevel));
+      const chartStats = compactTrendStats(hourlyStats);
+      const isCompact = chartStats.length < hourlyStats.length;
+      const isMinuteLevel = detectMinuteLevel(chartStats);
+      const labels = chartStats.map(item => formatTimeLabel(item.hour, isMinuteLevel));
 
       trendChartInstance.setOption({
         animationDuration: 500,
@@ -729,32 +759,32 @@
         ],
         series: [
           {
-            name: '总请求', type: 'bar', barMaxWidth: 28,
+            name: '总请求', type: 'bar', barMaxWidth: 20, barCategoryGap: '44%',
             itemStyle: {
-              borderRadius: [10, 10, 0, 0],
+              borderRadius: [7, 7, 0, 0],
               color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
                 { offset: 0, color: '#2dd4bf' }, { offset: 1, color: '#0d9488' },
               ]),
             },
-            data: hourlyStats.map(item => item.total),
+            data: chartStats.map(item => item.total),
           },
           {
-            name: '成功请求', type: 'line', smooth: true, symbol: 'circle', symbolSize: 7,
-            lineStyle: { width: 3, color: '#22c55e' }, itemStyle: { color: '#22c55e' },
+            name: '成功请求', type: 'line', smooth: true, symbol: 'circle', symbolSize: 5, showSymbol: !isCompact,
+            lineStyle: { width: 2.6, color: '#22c55e' }, itemStyle: { color: '#22c55e' },
             areaStyle: { color: 'rgba(34,197,94,0.12)' },
-            data: hourlyStats.map(item => item.success),
+            data: chartStats.map(item => item.success),
           },
           {
-            name: '失败请求', type: 'line', smooth: true, symbol: 'circle', symbolSize: 6,
-            lineStyle: { width: 3, color: '#ef4444' }, itemStyle: { color: '#ef4444' },
+            name: '失败请求', type: 'line', smooth: true, symbol: 'circle', symbolSize: 5, showSymbol: !isCompact,
+            lineStyle: { width: 2.4, color: '#ef4444' }, itemStyle: { color: '#ef4444' },
             areaStyle: { color: 'rgba(239,68,68,0.10)' },
-            data: hourlyStats.map(item => item.failed),
+            data: chartStats.map(item => item.failed),
           },
           {
-            name: '平均耗时', type: 'line', smooth: true, symbol: 'circle', symbolSize: 6,
+            name: '平均耗时', type: 'line', smooth: true, symbol: 'circle', symbolSize: 5, showSymbol: !isCompact,
             yAxisIndex: 1,
-            lineStyle: { width: 2, color: '#f59e0b' }, itemStyle: { color: '#f59e0b' },
-            data: hourlyStats.map(item => Number(item.avgTime || 0)),
+            lineStyle: { width: 2.2, color: '#f59e0b' }, itemStyle: { color: '#f59e0b' },
+            data: chartStats.map(item => Number(item.avgTime || 0)),
           },
         ],
       });
@@ -1076,8 +1106,10 @@
       keyTrendChartInstance = echarts.init(elements.keyTrendChart, null, { renderer: 'canvas' });
 
       const isDark = document.documentElement.classList.contains('dark');
-      const isMinute = detectMinuteLevel(hourlyStats);
-      const labels = hourlyStats.map(item => formatTimeLabel(item.hour, isMinute));
+      const chartStats = compactTrendStats(hourlyStats);
+      const isCompact = chartStats.length < hourlyStats.length;
+      const isMinute = detectMinuteLevel(chartStats);
+      const labels = chartStats.map(item => formatTimeLabel(item.hour, isMinute));
 
       keyTrendChartInstance.setOption({
         animationDuration: 500,
@@ -1102,26 +1134,26 @@
         }],
         series: [
           {
-            name: '总请求', type: 'bar', barMaxWidth: 28,
+            name: '总请求', type: 'bar', barMaxWidth: 20, barCategoryGap: '44%',
             itemStyle: {
-              borderRadius: [10, 10, 0, 0],
+              borderRadius: [7, 7, 0, 0],
               color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
                 { offset: 0, color: '#2dd4bf' }, { offset: 1, color: '#0d9488' },
               ]),
             },
-            data: hourlyStats.map(item => item.total),
+            data: chartStats.map(item => item.total),
           },
           {
-            name: '成功请求', type: 'line', smooth: true, symbol: 'circle', symbolSize: 7,
-            lineStyle: { width: 3, color: '#22c55e' }, itemStyle: { color: '#22c55e' },
+            name: '成功请求', type: 'line', smooth: true, symbol: 'circle', symbolSize: 5, showSymbol: !isCompact,
+            lineStyle: { width: 2.6, color: '#22c55e' }, itemStyle: { color: '#22c55e' },
             areaStyle: { color: 'rgba(34,197,94,0.12)' },
-            data: hourlyStats.map(item => item.success),
+            data: chartStats.map(item => item.success),
           },
           {
-            name: '失败请求', type: 'line', smooth: true, symbol: 'circle', symbolSize: 6,
-            lineStyle: { width: 3, color: '#ef4444' }, itemStyle: { color: '#ef4444' },
+            name: '失败请求', type: 'line', smooth: true, symbol: 'circle', symbolSize: 5, showSymbol: !isCompact,
+            lineStyle: { width: 2.4, color: '#ef4444' }, itemStyle: { color: '#ef4444' },
             areaStyle: { color: 'rgba(239,68,68,0.10)' },
-            data: hourlyStats.map(item => item.failed),
+            data: chartStats.map(item => item.failed),
           },
         ],
       });
