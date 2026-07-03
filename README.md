@@ -28,7 +28,7 @@ go run ./cmd/server
 每次推送 `main` 分支后，GitHub Actions 会构建并推送镜像：
 
 ```bash
-ghcr.io/0401lucky/new-api-realtime-monitor:latest
+ghcr.io/0401lucky/new-api-monitor:latest
 ```
 
 Zeabur 中选择从 Docker 镜像部署，镜像地址填写上面这一行即可。
