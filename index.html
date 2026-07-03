@@ -50,17 +50,11 @@
 
     body {
       font-family: Manrope, ui-sans-serif, system-ui, sans-serif;
-      background:
-        linear-gradient(115deg, rgba(8, 153, 131, 0.12) 0 18%, transparent 18% 100%),
-        linear-gradient(160deg, transparent 0 64%, rgba(245, 158, 11, 0.10) 64% 76%, transparent 76% 100%),
-        linear-gradient(135deg, #f8fafc 0%, #eefcf8 44%, #f8fafc 100%);
+      background: linear-gradient(180deg, #f8fafc 0%, #f0fdfa 50%, #f8fafc 100%);
     }
 
     html.dark body {
-      background:
-        linear-gradient(115deg, rgba(8, 153, 131, 0.18) 0 18%, transparent 18% 100%),
-        linear-gradient(160deg, transparent 0 62%, rgba(245, 158, 11, 0.12) 62% 74%, transparent 74% 100%),
-        linear-gradient(135deg, #020617 0%, #111827 48%, #030712 100%);
+      background: linear-gradient(180deg, #020617 0%, #0f172a 52%, #030712 100%);
     }
 
     /* ===== 玻璃拟态面板 ===== */
@@ -78,18 +72,79 @@
       box-shadow: 0 24px 72px rgba(0, 0, 0, 0.34);
     }
 
-    /* ===== 网格背景 ===== */
+    /* ===== 网格背景（径向遮罩，四周渐隐）===== */
     .grid-bg {
       background-image:
-        linear-gradient(rgba(8, 153, 131, 0.07) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(8, 153, 131, 0.07) 1px, transparent 1px);
+        linear-gradient(rgba(8, 153, 131, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(8, 153, 131, 0.05) 1px, transparent 1px);
       background-size: 56px 56px;
+      -webkit-mask-image: radial-gradient(ellipse 75% 60% at 50% 32%, #000 25%, transparent 78%);
+      mask-image: radial-gradient(ellipse 75% 60% at 50% 32%, #000 25%, transparent 78%);
     }
 
-    .signal-bg {
-      background-image:
-        linear-gradient(120deg, transparent 0 32%, rgba(8, 153, 131, 0.10) 32% 33%, transparent 33% 100%),
-        linear-gradient(120deg, transparent 0 68%, rgba(245, 158, 11, 0.12) 68% 69%, transparent 69% 100%);
+    /* ===== 极光光斑 ===== */
+    .aurora-blob {
+      position: absolute;
+      border-radius: 50%;
+      will-change: transform, opacity;
+    }
+
+    .aurora-blob--teal {
+      top: -18vw;
+      left: -12vw;
+      width: 55vw;
+      height: 55vw;
+      background: radial-gradient(closest-side, rgba(45, 212, 191, 0.16), transparent);
+      animation: aurora-drift-1 75s ease-in-out infinite alternate;
+    }
+
+    .aurora-blob--amber {
+      top: 30%;
+      right: -16vw;
+      width: 45vw;
+      height: 45vw;
+      background: radial-gradient(closest-side, rgba(245, 158, 11, 0.10), transparent);
+      animation: aurora-drift-2 90s ease-in-out infinite alternate;
+    }
+
+    .aurora-blob--blue {
+      bottom: -16vw;
+      left: -8vw;
+      width: 50vw;
+      height: 50vw;
+      background: radial-gradient(closest-side, rgba(56, 189, 248, 0.12), transparent);
+      animation: aurora-drift-3 105s ease-in-out infinite alternate;
+    }
+
+    html.dark .aurora-blob--teal {
+      background: radial-gradient(closest-side, rgba(45, 212, 191, 0.22), transparent);
+    }
+
+    html.dark .aurora-blob--amber {
+      background: radial-gradient(closest-side, rgba(245, 158, 11, 0.14), transparent);
+    }
+
+    html.dark .aurora-blob--blue {
+      background: radial-gradient(closest-side, rgba(56, 189, 248, 0.16), transparent);
+    }
+
+    @keyframes aurora-drift-1 {
+      from { transform: translate3d(0, 0, 0) scale(1); }
+      to { transform: translate3d(5%, 4%, 0) scale(1.06); }
+    }
+
+    @keyframes aurora-drift-2 {
+      from { transform: translate3d(0, 0, 0) scale(1.04); opacity: 0.85; }
+      to { transform: translate3d(-5%, -3%, 0) scale(1); opacity: 1; }
+    }
+
+    @keyframes aurora-drift-3 {
+      from { transform: translate3d(0, 0, 0) scale(1); opacity: 1; }
+      to { transform: translate3d(4%, -4%, 0) scale(1.05); opacity: 0.8; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .aurora-blob { animation: none; }
     }
 
     /* ===== 指标卡片 ===== */
@@ -182,7 +237,9 @@
   <!-- ===== 背景装饰 ===== -->
   <div class="pointer-events-none fixed inset-0 overflow-hidden">
     <div class="grid-bg absolute inset-0"></div>
-    <div class="signal-bg absolute inset-0 opacity-80"></div>
+    <div class="aurora-blob aurora-blob--teal"></div>
+    <div class="aurora-blob aurora-blob--amber"></div>
+    <div class="aurora-blob aurora-blob--blue"></div>
   </div>
 
   <!-- ===== 主内容区 ===== -->
