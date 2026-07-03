@@ -13,15 +13,33 @@ go run ./cmd/server
 
 ## Zeabur 部署
 
-项目已提供 `Dockerfile`，在 Zeabur 新建服务并指向本仓库即可。
+项目已提供 `Dockerfile`，也提供 GitHub Actions 自动构建镜像。
 
-部署步骤：
+### 方式一：从 GitHub 仓库部署
 
 1. 在 Zeabur 新建 Project。
 2. 选择从 GitHub 导入本仓库。
 3. 部署方式选择 Dockerfile。
 4. 配置下面的 New API 数据库环境变量。
 5. 部署完成后绑定域名或直接使用 Zeabur 默认域名访问。
+
+### 方式二：从 GHCR 镜像部署
+
+每次推送 `main` 分支后，GitHub Actions 会构建并推送镜像：
+
+```bash
+ghcr.io/0401lucky/new-api-realtime-monitor:latest
+```
+
+Zeabur 中选择从 Docker 镜像部署，镜像地址填写上面这一行即可。
+
+如果 GHCR Package 仍是私有状态，需要在 Zeabur 配置镜像仓库认证：
+
+- Registry：`ghcr.io`
+- Username：GitHub 用户名
+- Password：GitHub Personal Access Token，需要 `read:packages` 权限
+
+也可以在 GitHub 的 Packages 页面把该镜像改成 Public，这样 Zeabur 拉取时不需要认证。
 
 不需要挂载卷。服务本身是无状态的，只读取 New API 数据库并托管前端静态文件。
 
