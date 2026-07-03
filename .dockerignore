@@ -1,0 +1,9 @@
+.playwright-mcp
+*.png
+.git
+tmp
+dist
+node_modules
+server.exe
+server.out.log
+server.err.log

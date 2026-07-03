@@ -1,0 +1,6 @@
+server.exe
+server.out.log
+server.err.log
+verify-home.png
+*.png
+.playwright-mcp/
