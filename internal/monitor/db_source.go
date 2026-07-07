@@ -18,6 +18,15 @@ const (
 	logTypeError   = 5
 )
 
+// prompt 检查 / 泄漏保护拦截的请求也会写入 type=5 错误日志（other 带专属标记），
+// 属于网关策略拦截而非模型调用失败，统计时整体排除，保持与 New API 性能面板口径一致。
+// 占位符依次对应 logTypeConsume、logTypeError。
+func logScopeCond() string {
+	return `(type = ? OR (type = ?` +
+		` AND COALESCE(other, '') NOT LIKE '%"prompt_check"%'` +
+		` AND COALESCE(other, '') NOT LIKE '%"leak_protection_reason"%'))`
+}
+
 type DBSource struct {
 	server *Server
 	db     *sql.DB
@@ -88,7 +97,7 @@ func NewDBSource(server *Server) (*DBSource, error) {
 
 func (d *DBSource) Dashboard(label string, hours int) (DashboardData, error) {
 	start := d.startTime(hours)
-	filter := "created_at >= ? AND type IN (?, ?)"
+	filter := "created_at >= ? AND " + logScopeCond()
 	args := []any{start, logTypeConsume, logTypeError}
 	stats, err := d.hourlyStats(filter, args)
 	if err != nil {
@@ -115,7 +124,7 @@ func (d *DBSource) Models(hours int) ([]map[string]string, error) {
 	query := d.rebind(`
 		SELECT model_name
 		FROM logs
-		WHERE created_at >= ? AND type IN (?, ?) AND model_name <> ''
+		WHERE created_at >= ? AND ` + logScopeCond() + ` AND model_name <> ''
 		GROUP BY model_name
 		ORDER BY COUNT(*) DESC
 		LIMIT 100
@@ -139,7 +148,7 @@ func (d *DBSource) Models(hours int) ([]map[string]string, error) {
 
 func (d *DBSource) ModelLogs(name string, hours int) (map[string]any, error) {
 	start := d.startTime(hours)
-	filter := "created_at >= ? AND type IN (?, ?) AND model_name = ?"
+	filter := "created_at >= ? AND " + logScopeCond() + " AND model_name = ?"
 	args := []any{start, logTypeConsume, logTypeError, name}
 	stats, err := d.hourlyStats(filter, args)
 	if err != nil {
@@ -178,7 +187,7 @@ func (d *DBSource) KeyQuota(key string, hours int) (KeyData, error) {
 		return KeyData{}, err
 	}
 	start := d.startTime(hours)
-	filter := "created_at >= ? AND type IN (?, ?) AND token_id = ?"
+	filter := "created_at >= ? AND " + logScopeCond() + " AND token_id = ?"
 	args := []any{start, logTypeConsume, logTypeError, token.id}
 	stats, err := d.hourlyStats(filter, args)
 	if err != nil {
@@ -225,7 +234,7 @@ func (d *DBSource) ChannelRecords(id int, hours int) (ChannelData, error) {
 		return ChannelData{}, err
 	}
 	start := d.startTime(hours)
-	filter := "created_at >= ? AND type IN (?, ?) AND channel_id = ?"
+	filter := "created_at >= ? AND " + logScopeCond() + " AND channel_id = ?"
 	args := []any{start, logTypeConsume, logTypeError, id}
 	stats, err := d.hourlyStats(filter, args)
 	if err != nil {
