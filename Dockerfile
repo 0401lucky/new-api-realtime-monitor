@@ -11,6 +11,7 @@ FROM alpine:3.20
 WORKDIR /app
 COPY --from=builder /out/monitor /app/monitor
 COPY index.html API文档.md ./
+COPY static ./static
 
 ENV PORT=8080
 EXPOSE 8080

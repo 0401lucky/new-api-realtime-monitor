@@ -13,7 +13,18 @@
 
 ## API 接口列表
 
-所有接口均需携带 cookie（`credentials: 'include'`）进行身份认证。
+前端请求默认 `credentials: 'include'`。
+
+**鉴权（可选）：** 仅当服务端配置了 `MONITOR_TOKEN` 时，业务 API 需要鉴权：
+
+- 请求头 `X-Monitor-Token: <token>`
+- 或 `Authorization: Bearer <token>`
+
+以下接口始终开放：`GET /api/health`、`GET /api/config`（`config.authRequired` 可告知前端是否开启保护）。
+
+**限流：** `GET /api/key/quota` 与 `GET /api/channel/records` 默认每 IP 每分钟 30 次。
+
+**缓存：** 服务端对聚合查询使用短时内存缓存（`QUERY_CACHE_TTL_SECONDS` / `CACHE_TTL_SECONDS`）。
 
 ### 1. GET /api/config — 站点配置
 

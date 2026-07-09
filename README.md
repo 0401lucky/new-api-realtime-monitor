@@ -84,6 +84,25 @@ NEW_API_DSN=postgres://user:password@host:5432/new_api?sslmode=require
 - `SERVER_ADDRESS`：前端展示的平台地址，默认 `/`
 - `DOCS_LINK`：文档链接
 - `LOGO_URL`：Logo 地址
-- `CACHE_TTL_SECONDS`：前端刷新缓存周期
+- `CACHE_TTL_SECONDS`：前端自动刷新周期（秒），默认 `90`
+- `QUERY_CACHE_TTL_SECONDS`：后端查询内存缓存 TTL（秒）；未设置时跟随 `CACHE_TTL_SECONDS`，最终默认 `60`
 - `QUOTA_PER_UNIT`：额度换算单位
 - `APP_VERSION`：展示版本号
+- `MONITOR_TOKEN`：可选访问令牌。**不配置则公开访问**（适合全站展示）；配置后除 `/api/health`、`/api/config` 外的 API 需携带令牌
+- `KEY_RATE_LIMIT`：Key / 渠道查询每 IP 每分钟上限，默认 `30`
+
+### 访问令牌用法（可选）
+
+配置 `MONITOR_TOKEN` 后，请求需带：
+
+```http
+X-Monitor-Token: your-token
+```
+
+或：
+
+```http
+Authorization: Bearer your-token
+```
+
+浏览器端若收到 `401`，会弹出输入框，令牌会保存在本地 `localStorage`（键名 `monitor-token`）。

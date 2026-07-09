@@ -13,10 +13,12 @@ import (
 )
 
 type Server struct {
-	staticDir string
-	config    Config
-	now       func() time.Time
-	source    DataSource
+	staticDir  string
+	config     Config
+	now        func() time.Time
+	source     DataSource
+	authToken  string
+	keyLimiter *rateLimiter
 }
 
 type Config struct {
@@ -30,6 +32,7 @@ type Config struct {
 	StartTime                int64  `json:"startTime"`
 	SystemName               string `json:"systemName"`
 	Version                  string `json:"version"`
+	AuthRequired             bool   `json:"authRequired"`
 }
 
 type HourlyStat struct {
@@ -175,12 +178,27 @@ var modelCatalog = []struct {
 }
 
 func New(staticDir string) *Server {
-	server := &Server{
-		staticDir: staticDir,
-		config:    loadConfig(),
-		now:       time.Now,
+	cfg := loadConfig()
+	authToken := strings.TrimSpace(os.Getenv("MONITOR_TOKEN"))
+	cfg.AuthRequired = authToken != ""
+
+	// 查询缓存：优先 QUERY_CACHE_TTL_SECONDS，否则跟随 CACHE_TTL_SECONDS，默认 60s
+	queryTTL := envInt("QUERY_CACHE_TTL_SECONDS", 0)
+	if queryTTL <= 0 {
+		queryTTL = cfg.CacheTTLSeconds
 	}
-	server.source = NewDataSource(server)
+	if queryTTL <= 0 {
+		queryTTL = 60
+	}
+
+	server := &Server{
+		staticDir:  staticDir,
+		config:     cfg,
+		now:        time.Now,
+		authToken:  authToken,
+		keyLimiter: newRateLimiter(envInt("KEY_RATE_LIMIT", 30), time.Minute),
+	}
+	server.source = NewCachedSource(NewDataSource(server), queryTTL)
 	return server
 }
 
@@ -191,10 +209,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/dashboard", s.handleDashboard)
 	mux.HandleFunc("GET /api/logs/models", s.handleModels)
 	mux.HandleFunc("GET /api/logs", s.handleModelLogs)
-	mux.HandleFunc("GET /api/key/quota", s.handleKeyQuota)
-	mux.HandleFunc("GET /api/channel/records", s.handleChannelRecords)
+	mux.HandleFunc("GET /api/key/quota", s.withKeyRateLimit(s.handleKeyQuota))
+	mux.HandleFunc("GET /api/channel/records", s.withKeyRateLimit(s.handleChannelRecords))
 	mux.HandleFunc("/", s.handleStatic)
-	return withCommonHeaders(mux)
+	return withCommonHeaders(s.withAuth(mux))
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
@@ -450,6 +468,7 @@ func loadConfig() Config {
 		StartTime:                int64(envInt("START_TIME", int(time.Now().AddDate(0, -1, 0).Unix()))),
 		SystemName:               envString("SYSTEM_NAME", "CHY公益站"),
 		Version:                  envString("APP_VERSION", "v1.0.0"),
+		AuthRequired:             false,
 	}
 }
 
