@@ -34,6 +34,38 @@
     let trendChartInstance = null;
     let topModelsChartInstance = null;
     let keyTrendChartInstance = null;
+    let chartResizeBound = false;
+    let chartResizeTimer = null;
+    let scrollIdleTimer = null;
+
+    function resizeAllCharts() {
+      if (trendChartInstance) trendChartInstance.resize();
+      if (topModelsChartInstance) topModelsChartInstance.resize();
+      if (keyTrendChartInstance) keyTrendChartInstance.resize();
+    }
+
+    function ensureChartResizeListener() {
+      if (chartResizeBound) return;
+      chartResizeBound = true;
+      window.addEventListener('resize', () => {
+        if (chartResizeTimer) clearTimeout(chartResizeTimer);
+        chartResizeTimer = setTimeout(resizeAllCharts, 120);
+      }, { passive: true });
+    }
+
+    /** 滚动时暂停背景动画，停滚后恢复 */
+    function bindScrollPerfHints() {
+      const onScroll = () => {
+        document.body.classList.add('is-scrolling');
+        if (scrollIdleTimer) clearTimeout(scrollIdleTimer);
+        scrollIdleTimer = setTimeout(() => {
+          document.body.classList.remove('is-scrolling');
+        }, 140);
+      };
+      window.addEventListener('scroll', onScroll, { passive: true });
+      window.addEventListener('wheel', onScroll, { passive: true });
+      window.addEventListener('touchmove', onScroll, { passive: true });
+    }
 
     // ==================== DOM 元素引用 ====================
     const elements = {
@@ -325,7 +357,7 @@
 
       if (!trendChartInstance) {
         trendChartInstance = echarts.init(elements.trendChart, null, { renderer: 'canvas' });
-        window.addEventListener('resize', () => { if (trendChartInstance) trendChartInstance.resize(); });
+        ensureChartResizeListener();
       }
 
       const isDark = document.documentElement.classList.contains('dark');
@@ -342,7 +374,7 @@
           backgroundColor: isDark ? 'rgba(15,23,42,0.92)' : 'rgba(255,255,255,0.92)',
           borderColor: isDark ? 'rgba(45,212,191,0.18)' : 'rgba(15,23,42,0.08)',
           borderWidth: 1,
-          extraCssText: 'border-radius:14px;backdrop-filter:blur(12px);box-shadow:0 16px 40px rgba(15,23,42,0.12);',
+          extraCssText: 'border-radius:14px;box-shadow:0 16px 40px rgba(15,23,42,0.12);',
           textStyle: { color: isDark ? '#e2e8f0' : '#0f172a' },
         },
         legend: {
@@ -599,7 +631,7 @@
 
       if (!topModelsChartInstance) {
         topModelsChartInstance = echarts.init(elements.topModelsChartView, null, { renderer: 'canvas' });
-        window.addEventListener('resize', () => { if (topModelsChartInstance) topModelsChartInstance.resize(); });
+        ensureChartResizeListener();
       }
 
       const isDark = document.documentElement.classList.contains('dark');
@@ -718,6 +750,7 @@
 
       if (keyTrendChartInstance) keyTrendChartInstance.dispose();
       keyTrendChartInstance = echarts.init(elements.keyTrendChart, null, { renderer: 'canvas' });
+      ensureChartResizeListener();
 
       const isDark = document.documentElement.classList.contains('dark');
       const chartStats = compactTrendStats(hourlyStats);
@@ -985,15 +1018,15 @@
               <div class="mt-3 text-3xl font-black text-white">${quotaLabel}</div>
               <div class="mt-2 text-sm leading-7 text-white/85">已用 ${formatCreditsFromQuota(token.usedQuota)} · 累计请求 ${formatNumber(user.requestCount)} 次</div>
               <div class="mt-5 space-y-3 text-sm">
-                <div class="flex items-center justify-between gap-4 rounded-2xl border border-white/20 bg-white/10 px-4 py-3 backdrop-blur-sm">
+                <div class="flex items-center justify-between gap-4 rounded-2xl border border-white/20 bg-white/15 px-4 py-3">
                   <span class="font-bold text-white/80">Key 汇总</span>
                   <span class="font-black text-white">${formatNumber(usage.totalRecords)} 次</span>
                 </div>
-                <div class="flex items-center justify-between gap-4 rounded-2xl border border-white/20 bg-white/10 px-4 py-3 backdrop-blur-sm">
+                <div class="flex items-center justify-between gap-4 rounded-2xl border border-white/20 bg-white/15 px-4 py-3">
                   <span class="font-bold text-white/80">总 Tokens</span>
                   <span class="font-black text-white">${formatNumber(usage.totalTokens)}</span>
                 </div>
-                <div class="flex items-center justify-between gap-4 rounded-2xl border border-white/20 bg-white/10 px-4 py-3 backdrop-blur-sm">
+                <div class="flex items-center justify-between gap-4 rounded-2xl border border-white/20 bg-white/15 px-4 py-3">
                   <span class="font-bold text-white/80">当前状态</span>
                   <span class="font-black text-white">${statusLabel}</span>
                 </div>
@@ -1116,6 +1149,7 @@
     // ==================== 初始化 ====================
     function initialize() {
       applyTheme();
+      bindScrollPerfHints();
 
       // 主题切换
       document.getElementById('themeToggle').addEventListener('click', toggleTheme);

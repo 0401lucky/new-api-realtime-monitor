@@ -8,7 +8,8 @@
   --muted: #64748b;
   --primary: #089983;
   --primary-soft: rgba(8, 153, 131, 0.12);
-  --glass-bg: rgba(255, 255, 255, 0.72);
+  /* 提高不透明度，避免依赖昂贵的 backdrop-filter */
+  --glass-bg: rgba(255, 255, 255, 0.88);
   --glass-border: rgba(15, 23, 42, 0.07);
   --glass-shadow:
     0 1px 0 rgba(255, 255, 255, 0.75) inset,
@@ -25,13 +26,18 @@ html.dark {
   --muted: #94a3b8;
   --primary: #2dd4bf;
   --primary-soft: rgba(45, 212, 191, 0.16);
-  --glass-bg: rgba(15, 23, 42, 0.68);
+  --glass-bg: rgba(15, 23, 42, 0.88);
   --glass-border: rgba(148, 163, 184, 0.14);
   --glass-shadow:
     0 1px 0 rgba(255, 255, 255, 0.05) inset,
     0 16px 40px rgba(0, 0, 0, 0.28),
     0 32px 80px rgba(0, 0, 0, 0.22);
   --ring: rgba(45, 212, 191, 0.24);
+}
+
+html {
+  /* 滚动时优先合成，减少布局抖动 */
+  scroll-behavior: auto;
 }
 
 body {
@@ -41,23 +47,35 @@ body {
     radial-gradient(900px 500px at 88% 0%, rgba(56, 189, 248, 0.10), transparent 50%),
     linear-gradient(180deg, var(--bg-0) 0%, var(--bg-1) 48%, var(--bg-0) 100%);
   color: var(--ink);
+  /* 提示浏览器主滚动轴 */
+  overflow-x: hidden;
 }
 
-/* ===== 玻璃面板 ===== */
+/* ===== 固定背景层：独立合成层，避免滚动时连带重绘内容 ===== */
+.bg-decor {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  contain: strict;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* ===== 玻璃面板（无实时 blur，滚动更顺滑）===== */
 .glass {
   background: var(--glass-bg);
-  backdrop-filter: blur(20px) saturate(1.2);
-  -webkit-backdrop-filter: blur(20px) saturate(1.2);
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
+  /* 隔离绘制，滚动时减少脏区扩散 */
+  contain: layout paint;
   transition:
-    transform 200ms ease,
     box-shadow 200ms ease,
     border-color 200ms ease;
 }
 
 .glass-hover:hover {
-  transform: translateY(-2px);
   border-color: rgba(8, 153, 131, 0.22);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.8) inset,
@@ -79,23 +97,23 @@ html.dark .glass-hover:hover {
     linear-gradient(rgba(8, 153, 131, 0.045) 1px, transparent 1px),
     linear-gradient(90deg, rgba(8, 153, 131, 0.045) 1px, transparent 1px);
   background-size: 56px 56px;
-  -webkit-mask-image: radial-gradient(ellipse 75% 60% at 50% 32%, #000 25%, transparent 78%);
-  mask-image: radial-gradient(ellipse 75% 60% at 50% 32%, #000 25%, transparent 78%);
-  opacity: 0.9;
+  /* mask 在滚动时很贵，改用渐变透明度模拟淡出 */
+  opacity: 0.55;
 }
 
 html.dark .grid-bg {
   background-image:
     linear-gradient(rgba(45, 212, 191, 0.05) 1px, transparent 1px),
     linear-gradient(90deg, rgba(45, 212, 191, 0.05) 1px, transparent 1px);
+  opacity: 0.45;
 }
 
 /* ===== 极光光斑 ===== */
 .aurora-blob {
   position: absolute;
   border-radius: 50%;
-  filter: blur(2px);
-  will-change: transform, opacity;
+  /* 径向渐变本身已柔边，不再叠加 filter:blur */
+  transform: translateZ(0);
 }
 
 .aurora-blob--teal {
@@ -123,6 +141,11 @@ html.dark .grid-bg {
   height: 50vw;
   background: radial-gradient(closest-side, rgba(56, 189, 248, 0.13), transparent);
   animation: aurora-drift-3 105s ease-in-out infinite alternate;
+}
+
+/* 滚动中暂停极光，避免与滚动争抢合成带宽 */
+body.is-scrolling .aurora-blob {
+  animation-play-state: paused;
 }
 
 html.dark .aurora-blob--teal {
@@ -163,9 +186,8 @@ html.dark .aurora-blob--blue {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .aurora-blob { animation: none; will-change: auto; filter: none; }
+  .aurora-blob { animation: none; }
   .run-dot { animation: none; }
-  .glass-hover:hover { transform: none; }
 }
 
 /* ===== 指标卡片（分色强调）===== */
@@ -257,6 +279,11 @@ html.dark .metric-chip {
 }
 
 /* ===== 图表容器 ===== */
+.chart-panel,
+.mini-chart-panel {
+  /* 固定高度 + paint 隔离，避免滚动时脏区扩散到整页 */
+  contain: layout paint;
+}
 .chart-panel { height: 400px; }
 .mini-chart-panel { height: 420px; }
 
@@ -387,15 +414,13 @@ html.dark .subtle-select {
 
 .selector-panel {
   border: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 20px 60px rgba(15, 23, 42, 0.12);
 }
 
 html.dark .selector-panel {
   border-color: rgba(71, 85, 105, 0.58);
-  background: rgba(15, 23, 42, 0.96);
+  background: rgba(15, 23, 42, 0.98);
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.32);
 }
 

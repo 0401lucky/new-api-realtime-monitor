@@ -39,8 +39,8 @@
 </head>
 <body class="min-h-screen overflow-x-hidden text-slate-900 antialiased dark:text-white">
 
-  <!-- ===== 背景装饰 ===== -->
-  <div class="pointer-events-none fixed inset-0 overflow-hidden">
+  <!-- ===== 背景装饰（独立合成层，滚动时不拖累内容）===== -->
+  <div class="bg-decor" aria-hidden="true">
     <div class="grid-bg absolute inset-0"></div>
     <div class="aurora-blob aurora-blob--teal"></div>
     <div class="aurora-blob aurora-blob--amber"></div>
